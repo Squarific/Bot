@@ -51,10 +51,10 @@ order.sort(() => Math.random() - 0.5);
 
 (async function () {
     GM_addStyle(GM_getResourceText('TOASTIFY_CSS'));
-    currentOrderCanvas.width = 1000;
+    currentOrderCanvas.width = 2000;
     currentOrderCanvas.height = 1000;
     currentOrderCanvas = document.body.appendChild(currentOrderCanvas);
-    currentPlaceCanvas.width = 1000;
+    currentPlaceCanvas.width = 2000;
     currentPlaceCanvas.height = 1000;
     currentPlaceCanvas = document.body.appendChild(currentPlaceCanvas);
 
@@ -140,8 +140,8 @@ async function attemptPlace() {
         return;
     }
 
-    const rgbaOrder = currentOrderCtx.getImageData(0, 0, 1000, 1000).data;
-    const rgbaCanvas = ctx.getImageData(0, 0, 1000, 1000).data;
+    const rgbaOrder = currentOrderCtx.getImageData(0, 0, 2000, 1000).data;
+    const rgbaCanvas = ctx.getImageData(0, 0, 2000, 1000).data;
 
     for (const i of order) {
         // negeer lege order pixels.
@@ -151,7 +151,7 @@ async function attemptPlace() {
         // Deze pixel klopt.
         if (hex === rgbToHex(rgbaCanvas[(i * 4)], rgbaCanvas[(i * 4) + 1], rgbaCanvas[(i * 4) + 2])) continue;
 
-        const x = i % 1000;
+        const x = i % 2000;
         const y = Math.floor(i / 1000);
         Toastify({
             text: `Pixel proberen te plaatsen op ${x}, ${y}...`,
