@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VeganPlace Bot
 // @namespace    https://github.com/Squarific/Bot
-// @version      10
+// @version      11
 // @description  The bot for vegans
 // @author       Squarific
 // @match        https://www.reddit.com/r/place/*
