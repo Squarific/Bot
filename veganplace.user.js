@@ -128,69 +128,72 @@ async function attemptPlace() {
     }
     var ctx;
     try {
-        const canvasUrl = await getCurrentImageUrl();
-        ctx = await getCanvasFromUrl(canvasUrl, currentPlaceCanvas);
+        ctx = await getCanvasFromUrl(await getCurrentImageUrl('0'), currentPlaceCanvas, 0, 0);
+        ctx = await getCanvasFromUrl(await getCurrentImageUrl('1'), currentPlaceCanvas, 1000, 0)
     } catch (e) {
         console.warn('Fout bij ophalen map: ', e);
         Toastify({
-            text: 'Fout bij ophalen map. Opnieuw proberen in 15 sec...',
-            duration: 15000
+            text: 'Fout bij ophalen map. Opnieuw proberen in 10 sec...',
+            duration: 10000
         }).showToast();
-        setTimeout(attemptPlace, 15000); // probeer opnieuw in 15sec.
+        setTimeout(attemptPlace, 10000); // probeer opnieuw in 15sec.
         return;
     }
 
     const rgbaOrder = currentOrderCtx.getImageData(0, 0, 2000, 1000).data;
     const rgbaCanvas = ctx.getImageData(0, 0, 2000, 1000).data;
 
-    for (const i of order) {
-        // negeer lege order pixels.
-        if (rgbaOrder[(i * 4) + 3] === 0) continue;
+    for (const j of order) {
+        for (var l = 0; l < 10; l++) {
+            const i = (j * 10) + l;
+            // negeer lege order pixels.
+            if (rgbaOrder[(i * 4) + 3] === 0) continue;
 
-        const hex = rgbToHex(rgbaOrder[(i * 4)], rgbaOrder[(i * 4) + 1], rgbaOrder[(i * 4) + 2]);
-        // Deze pixel klopt.
-        if (hex === rgbToHex(rgbaCanvas[(i * 4)], rgbaCanvas[(i * 4) + 1], rgbaCanvas[(i * 4) + 2])) continue;
+            const hex = rgbToHex(rgbaOrder[(i * 4)], rgbaOrder[(i * 4) + 1], rgbaOrder[(i * 4) + 2]);
+            // Deze pixel klopt.
+            if (hex === rgbToHex(rgbaCanvas[(i * 4)], rgbaCanvas[(i * 4) + 1], rgbaCanvas[(i * 4) + 2])) continue;
 
-        const x = i % 2000;
-        const y = Math.floor(i / 1000);
-        Toastify({
-            text: `Pixel proberen te plaatsen op ${x}, ${y}...`,
-            duration: 10000
-        }).showToast();
-
-        const res = await place(x, y, COLOR_MAPPINGS[hex]);
-        const data = await res.json();
-        try {
-            if (data.errors) {
-                const error = data.errors[0];
-                const nextPixel = error.extensions.nextAvailablePixelTs + 3000;
-                const nextPixelDate = new Date(nextPixel);
-                const delay = nextPixelDate.getTime() - Date.now();
-                Toastify({
-                    text: `Pixel te snel geplaatst! Volgende pixel wordt geplaatst om ${nextPixelDate.toLocaleTimeString()}.`,
-                    duration: delay
-                }).showToast();
-                setTimeout(attemptPlace, delay);
-            } else {
-                const nextPixel = data.data.act.data[0].data.nextAvailablePixelTimestamp + 3000;
-                const nextPixelDate = new Date(nextPixel);
-                const delay = nextPixelDate.getTime() - Date.now();
-                Toastify({
-                    text: `Pixel geplaatst op ${x}, ${y}! Volgende pixel wordt geplaatst om ${nextPixelDate.toLocaleTimeString()}.`,
-                    duration: delay
-                }).showToast();
-                setTimeout(attemptPlace, delay);
-            }
-        } catch (e) {
-            console.warn('Fout bij response analyseren', e);
+            const x = i % 2000;
+            const y = Math.floor(i / 2000);
             Toastify({
-                text: `Fout bij response analyseren: ${e}.`,
+                text: `Pixel proberen te plaatsen op ${x}, ${y}...`,
                 duration: 10000
             }).showToast();
-            setTimeout(attemptPlace, 10000);
-        }
 
-        return;
+            const res = await place(x, y, COLOR_MAPPINGS[hex]);
+            const data = await res.json();
+            try {
+                if (data.errors) {
+                    const error = data.errors[0];
+                    const nextPixel = error.extensions.nextAvailablePixelTs + 3000;
+                    const nextPixelDate = new Date(nextPixel);
+                    const delay = nextPixelDate.getTime() - Date.now();
+                    Toastify({
+                        text: `Pixel te snel geplaatst! Volgende pixel wordt geplaatst om ${nextPixelDate.toLocaleTimeString()}.`,
+                        duration: delay
+                    }).showToast();
+                    setTimeout(attemptPlace, delay);
+                } else {
+                    const nextPixel = data.data.act.data[0].data.nextAvailablePixelTimestamp + 3000;
+                    const nextPixelDate = new Date(nextPixel);
+                    const delay = nextPixelDate.getTime() - Date.now();
+                    Toastify({
+                        text: `Fout bij response analyseren: ${e}.`,
+                        duration: 10000
+                    }).showToast();
+                    setTimeout(attemptPlace, 10000);
+                }
+            } catch (e) {
+                console.warn('Fout bij response analyseren', e);
+                Toastify({
+                    text: `Fout bij response analyseren: ${e}.`,
+                    duration: 10000
+                }).showToast();
+                setTimeout(attemptPlace, 10000);
+            }
+
+            return;
+        }
     }
 
     Toastify({
@@ -240,7 +243,7 @@ async function getAccessToken() {
     return responseText.split('\"accessToken\":\"')[1].split('"')[0];
 }
 
-async function getCurrentImageUrl() {
+async function getCurrentImageUrl(id = '0') {
     return new Promise((resolve, reject) => {
         const ws = new WebSocket('wss://gql-realtime-2.reddit.com/query', 'graphql-ws');
 
@@ -260,7 +263,7 @@ async function getCurrentImageUrl() {
                             'channel': {
                                 'teamOwner': 'AFD2022',
                                 'category': 'CANVAS',
-                                'tag': '0'
+                                'tag': id
                             }
                         }
                     },
@@ -286,13 +289,13 @@ async function getCurrentImageUrl() {
     });
 }
 
-function getCanvasFromUrl(url, canvas) {
+function getCanvasFromUrl(url, canvas, x = 0, y = 0) {
     return new Promise((resolve, reject) => {
         var ctx = canvas.getContext('2d');
         var img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-            ctx.drawImage(img, 0, 0);
+            ctx.drawImage(img, x, y);
             resolve(ctx);
         };
         img.onerror = reject;
