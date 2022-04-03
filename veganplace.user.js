@@ -9,8 +9,8 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=reddit.com
 // @require	     https://cdn.jsdelivr.net/npm/toastify-js
 // @resource     TOASTIFY_CSS https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css
-// @updateURL    https://github.com/Squarific/Bot/raw/master/placenlbot.user.js
-// @downloadURL  https://github.com/Squarific/Bot/raw/master/placenlbot.user.js
+// @updateURL    https://github.com/Squarific/Bot/raw/master/veganplace.user.js
+// @downloadURL  https://github.com/Squarific/Bot/raw/master/veganplace.user.js
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
 // ==/UserScript==
