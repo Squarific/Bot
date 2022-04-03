@@ -263,7 +263,7 @@ function place(x, y, color) {
                             'y': y % 1000
                         },
                         'colorIndex': color,
-                        'canvasIndex': (x > 999 ? 1 : 0) + (y > 999 ? 1 : 0)
+                        'canvasIndex': (x > 999 ? 1 : 0) + (y > 999 ? 2 : 0)
                     }
                 }
             },
