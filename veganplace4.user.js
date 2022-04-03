@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VeganPlace Bot
 // @namespace    https://github.com/Squarific/Bot
-// @version      27
+// @version      26
 // @description  The bot for vegans
 // @author       Squarific
 // @match        https://www.reddit.com/r/place/*
@@ -29,46 +29,35 @@ setTimeout(() => { location = location }, 27 * 60 * 1000);
 const DEFAULT_TOAST_DURATION_MS = 10000;
 
 const COLOR_MAPPINGS = {
-    '#6D001A': 0,
     '#BE0039': 1,
     '#FF4500': 2,
     '#FFA800': 3,
     '#FFD635': 4,
-    '#FFF8B8': 5,
     '#00A368': 6,
     '#00CC78': 7,
     '#7EED56': 8,
     '#00756F': 9,
     '#009EAA': 10,
-    '#00CCC0': 11,
     '#2450A4': 12,
     '#3690EA': 13,
     '#51E9F4': 14,
     '#493AC1': 15,
     '#6A5CFF': 16,
-    '#94B3FF': 17,
     '#811E9F': 18,
     '#B44AC0': 19,
-    '#E4ABFF': 20,
-    '#DE107F': 21,
     '#FF3881': 22,
     '#FF99AA': 23,
     '#6D482F': 24,
     '#9C6926': 25,
-    '#FFB470': 26,
     '#000000': 27,
-    '#515252': 28,
     '#898D90': 29,
     '#D4D7D9': 30,
     '#FFFFFF': 31
 };
 
-const WIDTH = 2000;
-const HEIGHT = 2000;
-
-const getRealWork = rgbaOrder => {
+let getRealWork = rgbaOrder => {
     let order = [];
-    for (var i = 0; i < WIDTH * HEIGHT; i++) {
+    for (var i = 0; i < 4000000; i++) {
         if (rgbaOrder[(i * 4) + 3] !== 0) {
             order.push(i);
         }
@@ -76,35 +65,15 @@ const getRealWork = rgbaOrder => {
     return order;
 };
 
-const getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
+let getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
     let pendingWork = [];
     for (const i of work) {
         if (rgbaOrderToHex(i, rgbaOrder) !== rgbaOrderToHex(i, rgbaCanvas)) {
-            const x = i % 2000;
-            const y = Math.floor(i / 2000);
-
-            pendingWork.push({
-                i,x,y,
-                a: (i * 4) + 3
-            });
+            pendingWork.push(i);
         }
     }
-
     return pendingWork;
 };
-
-const getRandomPixel = (work) => {
-    // there are typically not many work items, so this isnt that inefficient
-    work.shuffle();
-    work.sort(item => item.a);
-    
-    // get one of the first 50 pixels ordered by priority
-    // random from the first 50 so that all bots arnt getting the same pixel
-    const randomMax = work.length > 50 ? 50 : work.length;
-    const randomIndex = Math.floor(Math.random() * randomMax);
-
-    return work[randomIndex];
-}
 
 (async function () {
     GM_addStyle(GM_getResourceText('TOASTIFY_CSS'));
@@ -152,7 +121,7 @@ function connectSocket() {
             duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         socket.send(JSON.stringify({ type: 'getmap' }));
-        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV27' }));
+        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV21' }));
     };
 
     socket.onmessage = async function (message) {
@@ -208,8 +177,6 @@ async function attemptPlace() {
     try {
         ctx = await getCanvasFromUrl(await getCurrentImageUrl('0'), currentPlaceCanvas, 0, 0, false);
         ctx = await getCanvasFromUrl(await getCurrentImageUrl('1'), currentPlaceCanvas, 1000, 0, false)
-        ctx = await getCanvasFromUrl(await getCurrentImageUrl('2'), currentPlaceCanvas, 0, 1000, false)
-        ctx = await getCanvasFromUrl(await getCurrentImageUrl('3'), currentPlaceCanvas, 1000, 1000, false)
     } catch (e) {
         console.warn('Error retrieving map: ', e);
         Toastify({
@@ -235,16 +202,18 @@ async function attemptPlace() {
 
     const percentComplete = 100 - Math.ceil(work.length * 100 / order.length);
     const workRemaining = work.length;
-
-    const workItem = getRandomPixel(work);
-    const hex = rgbaOrderToHex(workItem.i, rgbaOrder);
+    const idx = Math.floor(Math.random() * work.length);
+    const i = work[idx];
+    const x = i % 2000;
+    const y = Math.floor(i / 2000);
+    const hex = rgbaOrderToHex(i, rgbaOrder);
 
     Toastify({
-        text: `Trying to place pixels on ${workItem.x}, ${workItem.y}... (${percentComplete}% complete, ${workRemaining} left)`,
+        text: `Trying to place pixels on ${x}, ${y}... (${percentComplete}% complete, ${workRemaining} left)`,
         duration: DEFAULT_TOAST_DURATION_MS
     }).showToast();
 
-    const res = await place(workItem.x, workItem.y, COLOR_MAPPINGS[hex]);
+    const res = await place(x, y, COLOR_MAPPINGS[hex]);
     const data = await res.json();
     try {
         if (data.errors) {
@@ -264,7 +233,7 @@ async function attemptPlace() {
             const delay = nextPixelDate.getTime() - Date.now();
             const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
             Toastify({
-                text: `Pixel placed at ${workItem.x}, ${workItem.y}! Next pixel is placed at ${nextPixelDate.toLocaleTimeString()}.`,
+                text: `Pixel placed at ${x}, ${y}! Next pixel is placed at ${nextPixelDate.toLocaleTimeString()}.`,
                 duration: toast_duration
             }).showToast();
             setTimeout(attemptPlace, delay);
@@ -294,7 +263,7 @@ function place(x, y, color) {
                             'y': y % 1000
                         },
                         'colorIndex': color,
-                        'canvasIndex': getCanvas(x, y)
+                        'canvasIndex': (x > 999 ? 1 : 0) + (y > 999 ? 2 : 0)
                     }
                 }
             },
@@ -309,15 +278,6 @@ function place(x, y, color) {
         }
     });
 }
-
-function getCanvas(x, y) {
-    if (x <= 999) {
-        return y <= 999 ? 0 : 2;
-    } else {
-        return y <= 999 ? 1 : 3;
-    }
-}
-
 
 async function getAccessToken() {
     const usingOldReddit = window.location.href.includes('new.reddit.com');
