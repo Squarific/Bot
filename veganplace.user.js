@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VeganPlace Bot
 // @namespace    https://github.com/Squarific/Bot
-// @version      26
+// @version      27
 // @description  The bot for vegans
 // @author       Squarific
 // @match        https://www.reddit.com/r/place/*
@@ -29,27 +29,35 @@ setTimeout(() => { location = location }, 27 * 60 * 1000);
 const DEFAULT_TOAST_DURATION_MS = 10000;
 
 const COLOR_MAPPINGS = {
+    '#6D001A': 0,
     '#BE0039': 1,
     '#FF4500': 2,
     '#FFA800': 3,
     '#FFD635': 4,
+    '#FFF8B8': 5,
     '#00A368': 6,
     '#00CC78': 7,
     '#7EED56': 8,
     '#00756F': 9,
     '#009EAA': 10,
+    '#00CCC0': 11,
     '#2450A4': 12,
     '#3690EA': 13,
     '#51E9F4': 14,
     '#493AC1': 15,
     '#6A5CFF': 16,
+    '#94B3FF': 17,
     '#811E9F': 18,
     '#B44AC0': 19,
+    '#E4ABFF': 20,
+    '#DE107F': 21,
     '#FF3881': 22,
     '#FF99AA': 23,
     '#6D482F': 24,
     '#9C6926': 25,
+    '#FFB470': 26,
     '#000000': 27,
+    '#515252': 28,
     '#898D90': 29,
     '#D4D7D9': 30,
     '#FFFFFF': 31
@@ -121,7 +129,7 @@ function connectSocket() {
             duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         socket.send(JSON.stringify({ type: 'getmap' }));
-        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV21' }));
+        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV27' }));
     };
 
     socket.onmessage = async function (message) {
@@ -177,6 +185,8 @@ async function attemptPlace() {
     try {
         ctx = await getCanvasFromUrl(await getCurrentImageUrl('0'), currentPlaceCanvas, 0, 0, false);
         ctx = await getCanvasFromUrl(await getCurrentImageUrl('1'), currentPlaceCanvas, 1000, 0, false)
+        ctx = await getCanvasFromUrl(await getCurrentImageUrl('2'), currentPlaceCanvas, 0, 1000, false)
+        ctx = await getCanvasFromUrl(await getCurrentImageUrl('3'), currentPlaceCanvas, 1000, 1000, false)
     } catch (e) {
         console.warn('Error retrieving map: ', e);
         Toastify({
@@ -263,7 +273,7 @@ function place(x, y, color) {
                             'y': y % 1000
                         },
                         'colorIndex': color,
-                        'canvasIndex': (x > 999 ? 1 : 0) + (y > 999 ? 2 : 0)
+                        'canvasIndex': getCanvas(x, y)
                     }
                 }
             },
@@ -278,6 +288,15 @@ function place(x, y, color) {
         }
     });
 }
+
+function getCanvas(x, y) {
+    if (x <= 999) {
+        return y <= 999 ? 0 : 2;
+    } else {
+        return y <= 999 ? 1 : 3;
+    }
+}
+
 
 async function getAccessToken() {
     const usingOldReddit = window.location.href.includes('new.reddit.com');
