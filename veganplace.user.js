@@ -95,7 +95,6 @@ const getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
 
 const getRandomPixel = (work) => {
     // there are typically not many work items, so this isnt that inefficient
-    work.shuffle();
     work.sort(item => item.a);
     
     // get one of the first 50 pixels ordered by priority
