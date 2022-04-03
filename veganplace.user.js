@@ -80,8 +80,8 @@ const getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
     let pendingWork = [];
     for (const i of work) {
         if (rgbaOrderToHex(i, rgbaOrder) !== rgbaOrderToHex(i, rgbaCanvas)) {
-            const x = i % 2000;
-            const y = Math.floor(i / 2000);
+            const x = i % WITDH;
+            const y = Math.floor(i / HEIGHT);
 
             pendingWork.push({
                 i,x,y,
@@ -108,12 +108,12 @@ const getRandomPixel = (work) => {
 
 (async function () {
     GM_addStyle(GM_getResourceText('TOASTIFY_CSS'));
-    currentOrderCanvas.width = 2000;
-    currentOrderCanvas.height = 2000;
+    currentOrderCanvas.width = WITDH;
+    currentOrderCanvas.height = HEIGHT;
     currentOrderCanvas.style.display = 'none';
     currentOrderCanvas = document.body.appendChild(currentOrderCanvas);
-    currentPlaceCanvas.width = 2000;
-    currentPlaceCanvas.height = 2000;
+    currentPlaceCanvas.width = WITDH;
+    currentPlaceCanvas.height = HEIGHT;
     currentPlaceCanvas.style.display = 'none';
     currentPlaceCanvas = document.body.appendChild(currentPlaceCanvas);
 
@@ -170,7 +170,7 @@ function connectSocket() {
                     duration: DEFAULT_TOAST_DURATION_MS
                 }).showToast();
                 currentOrderCtx = await getCanvasFromUrl(`https://vegan.averysmets.com/maps/${data.data}`, currentOrderCanvas, 0, 0, true);
-                order = getRealWork(currentOrderCtx.getImageData(0, 0, 2000, 2000).data);
+                order = getRealWork(currentOrderCtx.getImageData(0, 0, WITDH, HEIGHT).data);
                 Toastify({
                     text: `New map loaded, ${order.length} pixels in total`,
                     duration: DEFAULT_TOAST_DURATION_MS
@@ -220,8 +220,8 @@ async function attemptPlace() {
         return;
     }
 
-    const rgbaOrder = currentOrderCtx.getImageData(0, 0, 2000, 2000).data;
-    const rgbaCanvas = ctx.getImageData(0, 0, 2000, 2000).data;
+    const rgbaOrder = currentOrderCtx.getImageData(0, 0, WITDH, HEIGHT).data;
+    const rgbaCanvas = ctx.getImageData(0, 0, WITDH, HEIGHT).data;
     const work = getPendingWork(order, rgbaOrder, rgbaCanvas);
 
     if (work.length === 0) {
