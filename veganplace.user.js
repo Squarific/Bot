@@ -259,8 +259,8 @@ function place(x, y, color) {
                     'actionName': 'r/replace:set_pixel',
                     'PixelMessageData': {
                         'coordinate': {
-                            'x': x % 1000,
-                            'y': y % 1000
+                            'x': x % 2000,
+                            'y': y % 2000
                         },
                         'colorIndex': color,
                         'canvasIndex': (x > 999 ? 1 : 0)
