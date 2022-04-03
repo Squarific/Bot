@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VeganPlace Bot
 // @namespace    https://github.com/Squarific/Bot
-// @version      20
+// @version      23
 // @description  The bot for vegans
 // @author       Squarific
 // @match        https://www.reddit.com/r/place/*
@@ -15,8 +15,6 @@
 // @grant        GM_addStyle
 // ==/UserScript==
 
-// Sorry voor de rommelige code, haast en clean gaatn iet altijd samen ;)
-
 var socket;
 var order = undefined;
 var accessToken;
@@ -24,7 +22,11 @@ var currentOrderCanvas = document.createElement('canvas');
 var currentOrderCtx = currentOrderCanvas.getContext('2d');
 var currentPlaceCanvas = document.createElement('canvas');
 
+// Reload Site after 27 Minutes
 setTimeout(() => { location = location }, 27 * 60 * 1000);
+
+// Global constants
+const DEFAULT_TOAST_DURATION_MS = 10000;
 
 const COLOR_MAPPINGS = {
     '#BE0039': 1,
@@ -55,7 +57,7 @@ const COLOR_MAPPINGS = {
 
 let getRealWork = rgbaOrder => {
     let order = [];
-    for (var i = 0; i < 2000000; i++) {
+    for (var i = 0; i < 4000000; i++) {
         if (rgbaOrder[(i * 4) + 3] !== 0) {
             order.push(i);
         }
@@ -76,22 +78,22 @@ let getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
 (async function () {
     GM_addStyle(GM_getResourceText('TOASTIFY_CSS'));
     currentOrderCanvas.width = 2000;
-    currentOrderCanvas.height = 1000;
+    currentOrderCanvas.height = 2000;
     currentOrderCanvas.style.display = 'none';
     currentOrderCanvas = document.body.appendChild(currentOrderCanvas);
     currentPlaceCanvas.width = 2000;
-    currentPlaceCanvas.height = 1000;
+    currentPlaceCanvas.height = 2000;
     currentPlaceCanvas.style.display = 'none';
     currentPlaceCanvas = document.body.appendChild(currentPlaceCanvas);
 
     Toastify({
         text: 'Trying to get Accesstoken...',
-        duration: 10000
+        duration: DEFAULT_TOAST_DURATION_MS
     }).showToast();
     accessToken = await getAccessToken();
     Toastify({
         text: 'Got Accesstoken!',
-        duration: 10000
+        duration: DEFAULT_TOAST_DURATION_MS
     }).showToast();
 
     connectSocket();
@@ -108,7 +110,7 @@ let getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
 function connectSocket() {
     Toastify({
         text: 'Connecting to PlaceVegan server...',
-        duration: 10000
+        duration: DEFAULT_TOAST_DURATION_MS
     }).showToast();
 
     socket = new WebSocket('wss://vegan.averysmets.com/api/ws');
@@ -116,10 +118,10 @@ function connectSocket() {
     socket.onopen = function () {
         Toastify({
             text: 'Connected to PlaceVegan server!',
-            duration: 10000
+            duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         socket.send(JSON.stringify({ type: 'getmap' }));
-        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV17' }));
+        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV21' }));
     };
 
     socket.onmessage = async function (message) {
@@ -134,13 +136,20 @@ function connectSocket() {
             case 'map':
                 Toastify({
                     text: `Loading new map (reason: ${data.reason ? data.reason : 'connected with server'})...`,
-                    duration: 10000
+                    duration: DEFAULT_TOAST_DURATION_MS
                 }).showToast();
                 currentOrderCtx = await getCanvasFromUrl(`https://vegan.averysmets.com/maps/${data.data}`, currentOrderCanvas, 0, 0, true);
-                order = getRealWork(currentOrderCtx.getImageData(0, 0, 2000, 1000).data);
+                order = getRealWork(currentOrderCtx.getImageData(0, 0, 2000, 2000).data);
                 Toastify({
                     text: `New map loaded, ${order.length} pixels in total`,
-                    duration: 10000
+                    duration: DEFAULT_TOAST_DURATION_MS
+                }).showToast();
+                break;
+            case 'toast':
+                Toastify({
+                    text: `Message from server: ${data.message}`,
+                    duration: data.duration || DEFAULT_TOAST_DURATION_MS,
+                    style: data.style || {}
                 }).showToast();
                 break;
             default:
@@ -151,7 +160,7 @@ function connectSocket() {
     socket.onclose = function (e) {
         Toastify({
             text: `Connection with PlaceVegan server got terminated: ${e.reason}`,
-            duration: 10000
+            duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         console.error('Socket error: ', e.reason);
         socket.close();
@@ -172,14 +181,14 @@ async function attemptPlace() {
         console.warn('Error retrieving map: ', e);
         Toastify({
             text: 'Error retrieving map. Trying again in 10 sec...',
-            duration: 10000
+            duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         setTimeout(attemptPlace, 10000); // probeer opnieuw in 10sec.
         return;
     }
 
-    const rgbaOrder = currentOrderCtx.getImageData(0, 0, 2000, 1000).data;
-    const rgbaCanvas = ctx.getImageData(0, 0, 2000, 1000).data;
+    const rgbaOrder = currentOrderCtx.getImageData(0, 0, 2000, 2000).data;
+    const rgbaCanvas = ctx.getImageData(0, 0, 2000, 2000).data;
     const work = getPendingWork(order, rgbaOrder, rgbaCanvas);
 
     if (work.length === 0) {
@@ -201,7 +210,7 @@ async function attemptPlace() {
 
     Toastify({
         text: `Trying to place pixels on ${x}, ${y}... (${percentComplete}% complete, ${workRemaining} left)`,
-        duration: 10000
+        duration: DEFAULT_TOAST_DURATION_MS
     }).showToast();
 
     const res = await place(x, y, COLOR_MAPPINGS[hex]);
@@ -212,18 +221,20 @@ async function attemptPlace() {
             const nextPixel = error.extensions.nextAvailablePixelTs + 3000;
             const nextPixelDate = new Date(nextPixel);
             const delay = nextPixelDate.getTime() - Date.now();
+            const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
             Toastify({
                 text: `Pixel placed too fast! Next pixel is placed at ${nextPixelDate.toLocaleTimeString()}.`,
-                duration: delay
+                duration: toast_duration
             }).showToast();
             setTimeout(attemptPlace, delay);
         } else {
             const nextPixel = data.data.act.data[0].data.nextAvailablePixelTimestamp + 3000;
             const nextPixelDate = new Date(nextPixel);
             const delay = nextPixelDate.getTime() - Date.now();
+            const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
             Toastify({
                 text: `Pixel placed at ${x}, ${y}! Next pixel is placed at ${nextPixelDate.toLocaleTimeString()}.`,
-                duration: delay
+                duration: toast_duration
             }).showToast();
             setTimeout(attemptPlace, delay);
         }
@@ -231,7 +242,7 @@ async function attemptPlace() {
         console.warn('Response analysis error', e);
         Toastify({
             text: `Response analysis error: ${e}.`,
-            duration: 10000
+            duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         setTimeout(attemptPlace, 10000);
     }
