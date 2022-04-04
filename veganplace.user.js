@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VeganPlace Bot
 // @namespace    https://github.com/Squarific/Bot
-// @version      27
+// @version      28
 // @description  The bot for vegans
 // @author       Squarific
 // @match        https://www.reddit.com/r/place/*
@@ -11,6 +11,8 @@
 // @resource     TOASTIFY_CSS https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css
 // @updateURL    https://github.com/Squarific/Bot/raw/master/veganplace.user.js
 // @downloadURL  https://github.com/Squarific/Bot/raw/master/veganplace.user.js
+// @require https://greasyfork.org/scripts/421384-gm-fetch/code/GM_fetch.js?version=898562
+// @grant    GM_xmlhttpRequest
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
 // ==/UserScript==
@@ -129,7 +131,7 @@ function connectSocket() {
             duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         socket.send(JSON.stringify({ type: 'getmap' }));
-        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV27' }));
+        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV28' }));
     };
 
     socket.onmessage = async function (message) {
@@ -310,7 +312,12 @@ async function getAccessToken() {
 
 async function getCurrentImageUrl(id = '0') {
     return new Promise((resolve, reject) => {
-        const ws = new WebSocket('wss://gql-realtime-2.reddit.com/query', 'graphql-ws');
+       const ws = new WebSocket('wss://gql-realtime-2.reddit.com/query', 'graphql-ws', {
+        headers : {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:98.0) Gecko/20100101 Firefox/98.0",
+            "Origin": "https://hot-potato.reddit.com"
+        }
+      });
 
         ws.onopen = () => {
             ws.send(JSON.stringify({
@@ -353,9 +360,15 @@ async function getCurrentImageUrl(id = '0') {
         ws.onerror = reject;
     });
 }
-
+async function getObjectURL(url) {
+    const resp = await GM_fetch(url, {
+        mode: "cors",
+    });
+    const blob = await resp.blob();
+    return URL.createObjectURL(blob);
+}
 function getCanvasFromUrl(url, canvas, x = 0, y = 0, clearCanvas = false) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         let loadImage = ctx => {
             var img = new Image();
             img.crossOrigin = 'anonymous';
@@ -368,17 +381,16 @@ function getCanvasFromUrl(url, canvas, x = 0, y = 0, clearCanvas = false) {
             };
             img.onerror = () => {
                 Toastify({
-                    text: 'Error trying to load map. Retrying in 3 sec...',
+                    text: 'Fout bij ophalen map. Opnieuw proberen in 3 sec...',
                     duration: 3000
                 }).showToast();
                 setTimeout(() => loadImage(ctx), 3000);
             };
-            img.src = url;
+            getObjectURL(url).then(objectURL => img.src = objectURL);
         };
         loadImage(canvas.getContext('2d'));
     });
 }
-
 function rgbToHex(r, g, b) {
     return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
 }
