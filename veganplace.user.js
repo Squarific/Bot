@@ -101,9 +101,9 @@ const getRandomPixel = (work) => {
     // there are typically not many work items, so this isnt that inefficient
     work.sort(item => 255*item.a + Math.random());
     
-    // get one of the first 50 pixels ordered by priority
-    // random from the first 50 so that all bots arnt getting the same pixel
-    const randomMax = work.length > 50 ? 50 : work.length;
+    // get one of the first 10 pixels ordered by priority
+    // random from the first 10 so that all bots arnt getting the same pixel
+    const randomMax = work.length > 10 ? 10 : work.length;
     const randomIndex = Math.floor(Math.random() * randomMax);
 
     return work[randomIndex];
