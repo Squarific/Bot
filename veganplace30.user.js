@@ -208,7 +208,7 @@ async function attemptPlace() {
 
     if (work.length === 0) {
         Toastify({
-            text: `Trying to place pixels on ${x}, ${y}... (${percentComplete}% complete, ${workRemaining} left)`,
+            text: `All pixels are at the right place! Trying again in 30 sec...`,
             duration: 30000
         }).showToast();
         setTimeout(attemptPlace, 30000); // probeer opnieuw in 30sec.
