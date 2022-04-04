@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VeganPlace Bot
 // @namespace    https://github.com/Squarific/Bot
-// @version      28
+// @version      29
 // @description  The bot for vegans
 // @author       Squarific
 // @match        https://www.reddit.com/r/place/*
@@ -15,6 +15,8 @@
 // @grant    GM_xmlhttpRequest
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
+// @connect vegan.averysmets.com
+// @connect hot-potato.reddit.com
 // ==/UserScript==
 
 var socket;
@@ -131,7 +133,7 @@ function connectSocket() {
             duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         socket.send(JSON.stringify({ type: 'getmap' }));
-        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV28' }));
+        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV29' }));
     };
 
     socket.onmessage = async function (message) {
