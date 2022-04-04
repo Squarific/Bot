@@ -90,7 +90,7 @@ const getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
 
             pendingWork.push({
                 i,x,y,
-                a: (i * 4) + 3
+                a: rgbaOrder[(i * 4) + 3]
             });
         }
     }
@@ -244,7 +244,7 @@ async function attemptPlace() {
     const hex = rgbaOrderToHex(workItem.i, rgbaOrder);
 
     Toastify({
-        text: `Trying to place pixels on ${workItem.x}, ${workItem.y}... (${percentComplete}% complete, ${workRemaining} left)`,
+        text: `Trying to place pixels on ${workItem.x}, ${workItem.y} with a priority of ${workItem.a}... (${percentComplete}% complete, ${workRemaining} left)`,
         duration: DEFAULT_TOAST_DURATION_MS
     }).showToast();
 
