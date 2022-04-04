@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VeganPlace Bot
 // @namespace    https://github.com/Squarific/Bot
-// @version      32
+// @version      31
 // @description  The bot for vegans
 // @author       Squarific
 // @match        https://www.reddit.com/r/place/*
@@ -100,14 +100,10 @@ const getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
 
 const getRandomPixel = (work) => {
     // there are typically not many work items, so this isnt that inefficient
-    work.sort(item => 255*item.a + Math.random());
-    
-    // get one of the first 10 pixels ordered by priority
-    // random from the first 10 so that all bots arnt getting the same pixel
-    const randomMax = work.length > 10 ? 10 : work.length;
-    const randomIndex = Math.floor(Math.random() * randomMax);
+    // there is some randomness, for concurrency
+    work.sort((a, b) => b.a - a.a + (Math.random() - 0.5));
 
-    return work[randomIndex];
+    return work[0];
 }
 
 (async function () {
@@ -156,7 +152,7 @@ function connectSocket() {
             duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         socket.send(JSON.stringify({ type: 'getmap' }));
-        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV30' }));
+        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV31' }));
     };
 
     socket.onmessage = async function (message) {
