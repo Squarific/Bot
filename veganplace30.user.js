@@ -14,6 +14,7 @@
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
 // @grant        GM.xmlHttpRequest
+// @connect      reddit.com
 // @connect      vegan.averysmets.com
 // ==/UserScript==
 
