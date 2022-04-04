@@ -1,102 +1,3 @@
-// ==UserScript==
-// @name         VeganPlace Bot
-// @namespace    https://github.com/Squarific/Bot
-// @version      29
-// @description  The bot for vegans
-// @author       Squarific
-// @match        https://www.reddit.com/r/place/*
-// @match        https://new.reddit.com/r/place/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=reddit.com
-// @require	     https://cdn.jsdelivr.net/npm/toastify-js
-// @resource     TOASTIFY_CSS https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css
-// @updateURL    https://github.com/Squarific/Bot/raw/master/veganplace.user.js
-// @downloadURL  https://github.com/Squarific/Bot/raw/master/veganplace.user.js
-// @require https://greasyfork.org/scripts/421384-gm-fetch/code/GM_fetch.js?version=898562
-// @grant    GM_xmlhttpRequest
-// @grant        GM_getResourceText
-// @grant        GM_addStyle
-// @connect vegan.averysmets.com
-// @connect hot-potato.reddit.com
-// ==/UserScript==
-
-var socket;
-var order = undefined;
-var accessToken;
-var currentOrderCanvas = document.createElement('canvas');
-var currentOrderCtx = currentOrderCanvas.getContext('2d');
-var currentPlaceCanvas = document.createElement('canvas');
-
-// Reload Site after 27 Minutes
-setTimeout(() => { location = location }, 27 * 60 * 1000);
-
-// Global constants
-const DEFAULT_TOAST_DURATION_MS = 10000;
-
-const COLOR_MAPPINGS = {
-    '#6D001A': 0,
-    '#BE0039': 1,
-    '#FF4500': 2,
-    '#FFA800': 3,
-    '#FFD635': 4,
-    '#FFF8B8': 5,
-    '#00A368': 6,
-    '#00CC78': 7,
-    '#7EED56': 8,
-    '#00756F': 9,
-    '#009EAA': 10,
-    '#00CCC0': 11,
-    '#2450A4': 12,
-    '#3690EA': 13,
-    '#51E9F4': 14,
-    '#493AC1': 15,
-    '#6A5CFF': 16,
-    '#94B3FF': 17,
-    '#811E9F': 18,
-    '#B44AC0': 19,
-    '#E4ABFF': 20,
-    '#DE107F': 21,
-    '#FF3881': 22,
-    '#FF99AA': 23,
-    '#6D482F': 24,
-    '#9C6926': 25,
-    '#FFB470': 26,
-    '#000000': 27,
-    '#515252': 28,
-    '#898D90': 29,
-    '#D4D7D9': 30,
-    '#FFFFFF': 31
-};
-
-let getRealWork = rgbaOrder => {
-    let order = [];
-    for (var i = 0; i < 4000000; i++) {
-        if (rgbaOrder[(i * 4) + 3] !== 0) {
-            order.push(i);
-        }
-    }
-    return order;
-};
-
-let getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
-    let pendingWork = [];
-    for (const i of work) {
-        if (rgbaOrderToHex(i, rgbaOrder) !== rgbaOrderToHex(i, rgbaCanvas)) {
-            pendingWork.push(i);
-        }
-    }
-    return pendingWork;
-};
-
-(async function () {
-    GM_addStyle(GM_getResourceText('TOASTIFY_CSS'));
-    currentOrderCanvas.width = 2000;
-    currentOrderCanvas.height = 2000;
-    currentOrderCanvas.style.display = 'none';
-    currentOrderCanvas = document.body.appendChild(currentOrderCanvas);
-    currentPlaceCanvas.width = 2000;
-    currentPlaceCanvas.height = 2000;
-    currentPlaceCanvas.style.display = 'none';
-    currentPlaceCanvas = document.body.appendChild(currentPlaceCanvas);
 
     Toastify({
         text: 'Trying to get Accesstoken...',
@@ -112,7 +13,7 @@ let getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
     attemptPlace();
 
     setInterval(() => {
-        if (socket) socket.send(JSON.stringify({ type: 'ping' }));
+        if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'ping' }));
     }, 5000);
     setInterval(async () => {
         accessToken = await getAccessToken();
@@ -133,7 +34,7 @@ function connectSocket() {
             duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         socket.send(JSON.stringify({ type: 'getmap' }));
-        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV29' }));
+        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV30' }));
     };
 
     socket.onmessage = async function (message) {
@@ -174,7 +75,7 @@ function connectSocket() {
             text: `Connection with PlaceVegan server got terminated: ${e.reason}`,
             duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
-        console.error('Socket error: ', e.reason);
+        console.error('Socketfout: ', e.reason);
         socket.close();
         setTimeout(connectSocket, 1000);
     };
@@ -242,7 +143,7 @@ async function attemptPlace() {
             }).showToast();
             setTimeout(attemptPlace, delay);
         } else {
-            const nextPixel = data.data.act.data[0].data.nextAvailablePixelTimestamp + 3000;
+            const nextPixel = data.data.act.data[0].data.nextAvailablePixelTimestamp + 3000 + Math.floor(Math.random() * 10000); // Random tijd toevoegen tussen 0 en 10 sec om detectie te voorkomen en te spreiden na server herstart.
             const nextPixelDate = new Date(nextPixel);
             const delay = nextPixelDate.getTime() - Date.now();
             const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
@@ -301,7 +202,6 @@ function getCanvas(x, y) {
     }
 }
 
-
 async function getAccessToken() {
     const usingOldReddit = window.location.href.includes('new.reddit.com');
     const url = usingOldReddit ? 'https://new.reddit.com/r/place/' : 'https://www.reddit.com/r/place/';
@@ -314,12 +214,7 @@ async function getAccessToken() {
 
 async function getCurrentImageUrl(id = '0') {
     return new Promise((resolve, reject) => {
-       const ws = new WebSocket('wss://gql-realtime-2.reddit.com/query', 'graphql-ws', {
-        headers : {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:98.0) Gecko/20100101 Firefox/98.0",
-            "Origin": "https://hot-potato.reddit.com"
-        }
-      });
+        const ws = new WebSocket('wss://gql-realtime-2.reddit.com/query', 'graphql-ws');
 
         ws.onopen = () => {
             ws.send(JSON.stringify({
@@ -362,18 +257,18 @@ async function getCurrentImageUrl(id = '0') {
         ws.onerror = reject;
     });
 }
-async function getObjectURL(url) {
-    const resp = await GM_fetch(url, {
-        mode: "cors",
-    });
-    const blob = await resp.blob();
-    return URL.createObjectURL(blob);
-}
+
 function getCanvasFromUrl(url, canvas, x = 0, y = 0, clearCanvas = false) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         let loadImage = ctx => {
+        GM.xmlHttpRequest({
+            method: "GET",
+            url: url,
+            responseType: 'blob',
+            onload: function(response) {
+            var urlCreator = window.URL || window.webkitURL;
+            var imageUrl = urlCreator.createObjectURL(this.response);
             var img = new Image();
-            img.crossOrigin = 'anonymous';
             img.onload = () => {
                 if (clearCanvas) {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -388,11 +283,14 @@ function getCanvasFromUrl(url, canvas, x = 0, y = 0, clearCanvas = false) {
                 }).showToast();
                 setTimeout(() => loadImage(ctx), 3000);
             };
-            getObjectURL(url).then(objectURL => img.src = objectURL);
+            img.src = imageUrl;
+  }
+})
         };
         loadImage(canvas.getContext('2d'));
     });
 }
+
 function rgbToHex(r, g, b) {
     return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
 }
