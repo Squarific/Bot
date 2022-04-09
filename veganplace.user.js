@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VeganPlace Bot
 // @namespace    https://github.com/Squarific/Bot
-// @version      30
+// @version      31
 // @description  The bot for vegans
 // @author       Squarific
 // @match        https://www.reddit.com/r/place/*
@@ -68,9 +68,12 @@ const COLOR_MAPPINGS = {
     '#FFFFFF': 31
 };
 
-let getRealWork = rgbaOrder => {
+const WIDTH = 2000;
+const HEIGHT = 2000;
+
+const getRealWork = rgbaOrder => {
     let order = [];
-    for (var i = 0; i < 4000000; i++) {
+    for (var i = 0; i < WIDTH * HEIGHT; i++) {
         if (rgbaOrder[(i * 4) + 3] !== 0) {
             order.push(i);
         }
@@ -78,24 +81,39 @@ let getRealWork = rgbaOrder => {
     return order;
 };
 
-let getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
+const getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
     let pendingWork = [];
     for (const i of work) {
         if (rgbaOrderToHex(i, rgbaOrder) !== rgbaOrderToHex(i, rgbaCanvas)) {
-            pendingWork.push(i);
+            const x = i % WIDTH;
+            const y = Math.floor(i / HEIGHT);
+
+            pendingWork.push({
+                i,x,y,
+                a: rgbaOrder[(i * 4) + 3]
+            });
         }
     }
+
     return pendingWork;
 };
 
+const getRandomPixel = (work) => {
+    // there are typically not many work items, so this isnt that inefficient
+    // there is some randomness, for concurrency
+    work.sort((a, b) => b.a - a.a + (Math.random() - 0.5));
+
+    return work[0];
+}
+
 (async function () {
     GM_addStyle(GM_getResourceText('TOASTIFY_CSS'));
-    currentOrderCanvas.width = 2000;
-    currentOrderCanvas.height = 2000;
+    currentOrderCanvas.width = WIDTH;
+    currentOrderCanvas.height = HEIGHT;
     currentOrderCanvas.style.display = 'none';
     currentOrderCanvas = document.body.appendChild(currentOrderCanvas);
-    currentPlaceCanvas.width = 2000;
-    currentPlaceCanvas.height = 2000;
+    currentPlaceCanvas.width = WIDTH;
+    currentPlaceCanvas.height = HEIGHT;
     currentPlaceCanvas.style.display = 'none';
     currentPlaceCanvas = document.body.appendChild(currentPlaceCanvas);
 
@@ -134,7 +152,7 @@ function connectSocket() {
             duration: DEFAULT_TOAST_DURATION_MS
         }).showToast();
         socket.send(JSON.stringify({ type: 'getmap' }));
-        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV30' }));
+        socket.send(JSON.stringify({ type: 'brand', brand: 'userscriptV31' }));
     };
 
     socket.onmessage = async function (message) {
@@ -152,7 +170,7 @@ function connectSocket() {
                     duration: DEFAULT_TOAST_DURATION_MS
                 }).showToast();
                 currentOrderCtx = await getCanvasFromUrl(`https://vegan.averysmets.com/maps/${data.data}`, currentOrderCanvas, 0, 0, true);
-                order = getRealWork(currentOrderCtx.getImageData(0, 0, 2000, 2000).data);
+                order = getRealWork(currentOrderCtx.getImageData(0, 0, WIDTH, HEIGHT).data);
                 Toastify({
                     text: `New map loaded, ${order.length} pixels in total`,
                     duration: DEFAULT_TOAST_DURATION_MS
@@ -202,8 +220,8 @@ async function attemptPlace() {
         return;
     }
 
-    const rgbaOrder = currentOrderCtx.getImageData(0, 0, 2000, 2000).data;
-    const rgbaCanvas = ctx.getImageData(0, 0, 2000, 2000).data;
+    const rgbaOrder = currentOrderCtx.getImageData(0, 0, WIDTH, HEIGHT).data;
+    const rgbaCanvas = ctx.getImageData(0, 0, WIDTH, HEIGHT).data;
     const work = getPendingWork(order, rgbaOrder, rgbaCanvas);
 
     if (work.length === 0) {
@@ -217,18 +235,16 @@ async function attemptPlace() {
 
     const percentComplete = 100 - Math.ceil(work.length * 100 / order.length);
     const workRemaining = work.length;
-    const idx = Math.floor(Math.random() * work.length);
-    const i = work[idx];
-    const x = i % 2000;
-    const y = Math.floor(i / 2000);
-    const hex = rgbaOrderToHex(i, rgbaOrder);
+
+    const workItem = getRandomPixel(work);
+    const hex = rgbaOrderToHex(workItem.i, rgbaOrder);
 
     Toastify({
-        text: `Trying to place pixels on ${x}, ${y}... (${percentComplete}% complete, ${workRemaining} left)`,
+        text: `Trying to place pixels on ${workItem.x}, ${workItem.y} with a priority of ${workItem.a}... (${percentComplete}% complete, ${workRemaining} left)`,
         duration: DEFAULT_TOAST_DURATION_MS
     }).showToast();
 
-    const res = await place(x, y, COLOR_MAPPINGS[hex]);
+    const res = await place(workItem.x, workItem.y, COLOR_MAPPINGS[hex]);
     const data = await res.json();
     try {
         if (data.errors) {
@@ -248,7 +264,7 @@ async function attemptPlace() {
             const delay = nextPixelDate.getTime() - Date.now();
             const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
             Toastify({
-                text: `Pixel placed at ${x}, ${y}! Next pixel is placed at ${nextPixelDate.toLocaleTimeString()}.`,
+                text: `Pixel placed at ${workItem.x}, ${workItem.y}! Next pixel is placed at ${nextPixelDate.toLocaleTimeString()}.`,
                 duration: toast_duration
             }).showToast();
             setTimeout(attemptPlace, delay);
